@@ -12,6 +12,7 @@ import asyncio
 import logging
 import aio_pika
 import traceback
+import json
 
 
 logger = logging.getLogger(__name__)
@@ -297,8 +298,10 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
         )
         errors = exec_result.get('errors')
         if errors is not None:
-            logger.error(errors)
-            msg = f'Got errors while executing external method {reciever}.{methode_name} with arguments {method_args}": {errors}'
+            msg = f'''Got errors while executing external method {reciever}.{methode_name}:
+
+{json.dumps(errors, indent=4)}'''
+            logger.error(msg)
             raise exceptions.ExternalMethodException(msg, self.session, self, exec_result.get('message_id'), exec_result)
         if exec_result.get('type') != 'method_result':
             msg_type = exec_result.get('type')

@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING, Union
 from uuid import UUID
+from collections import OrderedDict
 
 if TYPE_CHECKING:
     from at_queue.core.session import BasicSession
@@ -15,10 +16,13 @@ class ATQueueException(Exception):
 
     @property
     def __dict__(self):
-        return {
-            'error_message': self.msg,
-            'error_type': self.__class__.__name__
-        }
+        result = OrderedDict()
+        result['error_message'] = self.msg
+        result['error_type'] = self.__class__.__name__
+        return result
+    
+    def __str__(self) -> str:
+        return self.msg
 
 
 class SessionException(ATQueueException):
@@ -30,11 +34,9 @@ class SessionException(ATQueueException):
 
     @property
     def __dict__(self):
-        return {
-            'type': self.__class__.__name__,
-            'session': self.session.id,
-            **super().__dict__
-        }
+        result = super().__dict__
+        result['session'] = self.session.id
+        return result
     
     
 class SessionNotInitializedException(SessionException):
@@ -50,10 +52,9 @@ class ATComponentException(SessionException):
 
     @property
     def __dict__(self):
-        return {
-            'component': self.component.name,
-            **super().__dict__
-        }
+        result = super().__dict__
+        result['component'] = self.component.name
+        return result
 
 
 class ComponentNotInitializedException(ATComponentException):
@@ -71,11 +72,10 @@ class ProcessMessageException(ATComponentException):
 
     @property
     def __dict__(self):
-        return {
-            'processed_message_id': str(self.processed_message_id),
-            'processed_message': self.processed_message,
-            **super().__dict__
-        }
+        result = super().__dict__
+        result['message_id'] = self.processed_message_id
+        result['message'] = self.processed_message
+        return result
     
 class RegisterException(ProcessMessageException):
     pass
@@ -92,10 +92,9 @@ class ExecMethodException(ProcessMessageException):
 
     @property
     def __dict__(self):
-        return {
-            'method': self.method.name if self.method is not None else None,
-            **super().__dict__
-        }
+        result = super().__dict__
+        result['method'] = self.method.name if self.method is not None else None
+        return result
 
 class MethodArgumentSchemaException(ExecMethodException):
     argument: 'Input'
@@ -106,8 +105,7 @@ class MethodArgumentSchemaException(ExecMethodException):
 
     @property
     def __dict__(self):
-        return {
-            'argument': self.argument.name,
-            **super().__dict__,
-        }
+        result = super().__dict__
+        result['argument'] = self.argument.name
+        return result
     
