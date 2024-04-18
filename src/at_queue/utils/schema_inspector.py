@@ -68,4 +68,4 @@ def return_type_to_json_schema(func: Callable):
 
 
 def method_to_json_schema(method: Callable):
-    function_to_json_schema(method, as_method=True)
+    return function_to_json_schema(method, as_method=True)

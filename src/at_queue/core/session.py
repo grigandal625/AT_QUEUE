@@ -70,12 +70,12 @@ class ConnectionParameters:
 
     async def connect_robust(self) -> aio_pika.RobustConnection:
         return await aio_pika.connect_robust(**self.connecion_kwargs)
-        
 
 
 class BasicSession:
     connection_parameters: ConnectionParameters
     initialized: bool = False
+    auto_ack: bool = True
 
     _send_connection: aio_pika.abc.AbstractConnection
     _send_channel: aio_pika.abc.AbstractChannel
@@ -87,14 +87,15 @@ class BasicSession:
     _listen_future: asyncio.Future
 
     uuid: UUID
-    _process_message: Union[Callable, Awaitable]
+    _process_message: Union[Callable, Awaitable] = None
 
-    def __init__(self, connection_parameters: ConnectionParameters, uuid: Union[UUID, str] = None, *args, **kwargs) -> None:
+    def __init__(self, connection_parameters: ConnectionParameters, uuid: Union[UUID, str] = None, auto_ack: bool = True, *args, **kwargs) -> None:
         if uuid is None:
             uuid = uuid4()
         if isinstance(uuid, str):
             uuid = UUID(uuid)
         self.uuid = uuid
+        self.auto_ack = auto_ack
         self.connection_parameters = connection_parameters
 
     async def initialize(self) -> bool:
@@ -150,19 +151,19 @@ class BasicSession:
     
     async def _main_callback(self, message: aio_pika.IncomingMessage, *args, **kwargs):
         logger.info(f"Recieved message: {message.body.decode()}")
-        await message.ack()
+        if self.auto_ack:
+            await message.ack()
         if self._process_message is not None:
-            if inspect.iscoroutinefunction(self._process_message):
-                await self._process_message(msg=message, session=self, *args, **kwargs)
-            elif callable(self._process_message):
-                self._process_message(msg=message, session=self, *args, **kwargs)
+            res = self._process_message(msg=message, session=self, *args, **kwargs)
+            if inspect.iscoroutine(res):
+                await res
 
     def process_message(self, func: Union[Callable, Awaitable]):
         self._process_message = func
 
     async def send(self, message: str) -> str:
         self._check_initialized()
-        self.send_channel.default_exchange.publish(
+        await self.send_channel.default_exchange.publish(
             aio_pika.Message(message.encode()), 
             routing_key=f'send-{self.id}'
         )
@@ -181,12 +182,17 @@ class BasicSession:
             self._listen_future.set_result(True)
             logger.info(f"Interrupted consumer: {consumer}")
 
+    async def stop(self):
+        await self.send_connection.close()
+        await self.recieve_connection.close()
+        self._listen_future.set_result(True)
+
 
 class JSONSession(BasicSession):
 
     async def send(self, message: Dict) -> Dict:
-        message = json.dumps(message, ensure_ascii=False)
-        await super().send(message)
+        msg = json.dumps(message, ensure_ascii=False)
+        await super().send(msg)
         return message
     
     def jsonify_body(self, func: Union[Callable, Awaitable]) -> Union[Callable, Awaitable]:
@@ -196,7 +202,6 @@ class JSONSession(BasicSession):
                 body = json.loads(body)
                 kwargs['session'] = self
                 return func(
-                    session=self, 
                     msg=msg,
                     body=body,
                     *args, 
@@ -222,23 +227,26 @@ class MessageBodyDict(TypedDict):
 
 class CommunicationSession(JSONSession):
     communicator_name: str
+    warn_on_reciever_differs: bool = True
 
     def __init__(
         self, 
         communicator_name: str, 
         connection_parameters: ConnectionParameters, uuid: Union[UUID, str] = None,
+        auto_ack: bool = True,
+        warn_on_reciever_differs: bool = True,
         *args, **kwargs
     ) -> None:
-
-        super().__init__(connection_parameters, uuid=uuid, *args, **kwargs)
+        super().__init__(connection_parameters, uuid=uuid, auto_ack=auto_ack, *args, **kwargs)
         self.communicator_name = communicator_name
+        self.warn_on_reciever_differs = warn_on_reciever_differs
 
-    async def send(self, reciever: str, message: dict, answer_to: Optional[Union[UUID, str]] = None) -> MessageBodyDict:
+    async def send(self, reciever: str, message: dict, answer_to: Optional[Union[UUID, str]] = None, message_id: Optional[Union[UUID, str]] = None, sender: str = None) -> MessageBodyDict:
         body = {
-            'sender': self.communicator_name, 
+            'sender': sender or self.communicator_name, 
             'reciever': reciever, 
             'message': message,
-            'message_id': str(uuid4())
+            'message_id': str(message_id) if message_id else str(uuid4())
         }
         if answer_to is not None:
             body['answer_to'] = str(answer_to)
@@ -257,7 +265,7 @@ class CommunicationSession(JSONSession):
             
             if sender is None:
                 logger.warning('Sender is not specified')
-            if reciever != self.communicator_name:
+            if (reciever != self.communicator_name) and self.warn_on_reciever_differs:
                 logger.warning(f'Reciever "{reciever}" is different from session communicator name "{self.communicator_name}"')
             if message is None:
                 logger.warning('Message is not specified')
@@ -298,14 +306,17 @@ class QueueSession(CommunicationSession):
         communicator_name: str, 
         connection_parameters: ConnectionParameters, 
         uuid: Union[str, UUID] = None,
+        auto_ack: bool = True,
+        warn_on_reciever_differs: bool = True,
+        *args, **kwargs
     ) -> None:
-        super().__init__(communicator_name, connection_parameters, uuid=uuid)
+        super().__init__(communicator_name, connection_parameters, uuid=uuid, auto_ack=auto_ack, warn_on_reciever_differs=warn_on_reciever_differs)
         self.awaiting_messages = {}
         self.callback_tasks = []
         self.process_message(lambda *args, **kwargs: None)
 
-    async def send(self, reciever: str, message: dict, answer_to: Optional[Union[UUID, str]] = None, await_answer: bool = True, callback: Callable = None) -> AwaitingMessageBodyDict:
-        msg = await super().send(reciever, message, answer_to)
+    async def send(self, reciever: str, message: dict, answer_to: Optional[Union[UUID, str]] = None, await_answer: bool = True, callback: Union[Callable, Awaitable] = None, message_id: Union[str, UUID] = None, sender: str = None) -> AwaitingMessageBodyDict:
+        msg = await super().send(reciever, message, answer_to, message_id=message_id, sender=sender)
         if await_answer:
             msg['callback'] = callback
             msg['future'] = asyncio.Future()
@@ -314,21 +325,21 @@ class QueueSession(CommunicationSession):
     
     def awaitify_recieve(self, func: Union[Callable, Awaitable]) -> Union[Callable, Awaitable]:
 
-        async def wrapper(*args, answer_to: Union[str, UUID] = None, **kwargs):
+        async def wrapper(*args, message: dict, answer_to: Union[str, UUID] = None, **kwargs):
             msg = self.awaiting_messages.pop(str(answer_to), None)
-            callback_task = None
             if msg is not None:
+                future = msg.get('future')
+                if future is not None:
+                    future.set_result(message)
                 callback = msg.get('callback')
                 if callback is not None:
-                    if inspect.iscoroutinefunction(callback):
-                        loop = asyncio.get_event_loop()
-                        callback_task = loop.create_task(callback(*args, answer_to=answer_to, **kwargs))
-                        self.callback_tasks.append(callback_task)
-                    else:
-                        callback(*args, answer_to=answer_to, **kwargs)
-            if inspect.iscoroutinefunction(func):
-                return await func(*args, answer_to=answer_to, **kwargs)
-            return func(*args, answer_to=answer_to, **kwargs)
+                    res = callback(*args, answer_to=answer_to, message=message, **kwargs)
+                    if inspect.iscoroutine(res):
+                        self.callback_tasks.append(res)
+            res = func(*args, message=message, answer_to=answer_to, **kwargs)
+            if inspect.iscoroutine(res):
+                return await res
+            return res
         
         return wrapper
     
@@ -344,21 +355,86 @@ class QueueSession(CommunicationSession):
 
 class MSGAwaitSession(QueueSession):
 
-    def __init__(self, communicator_name: str, connection_parameters: ConnectionParameters, uuid: str | UUID = None) -> None:
-        super().__init__(communicator_name, connection_parameters, uuid)
-        self.process_message(self._on_message)
-
-    async def _on_message(self, message_id: Union[str, UUID], message: dict, *args, **kwargs):
-        msg = self.awaiting_messages.get(str(message))
-        if msg is not None:
-            future = msg.get('future')
-            if future is not None:
-                future.set_result(message)
+    def __init__(self, communicator_name: str, connection_parameters: ConnectionParameters, uuid: str | UUID = None, auto_ack: bool = True, warn_on_reciever_differs: bool = True, *args, **kwargs) -> None:
+        super().__init__(communicator_name, connection_parameters, uuid, auto_ack=auto_ack, warn_on_reciever_differs=warn_on_reciever_differs, *args, **kwargs)
+        self.process_message(lambda *args, **kwargs: None)
 
     async def send_await(self, reciever: str, message: dict, answer_to: Optional[Union[UUID, str]] = None, await_answer: bool = True, callback: Callable[..., Any] = None):
         message: AwaitingMessageBodyDict = await self.send(reciever, message, answer_to, await_answer, callback)
+        self.awaiting_messages[str(message['message_id'])] = message
         future = message.get('future')
         if future is not None:
             await future
             return future.result()
         return None
+
+
+class ReversedSession(BasicSession):
+
+    async def send(self, message: str) -> str:
+        msg = f'Reversed Session {self.id} will send message {message} to recieve queue recieve-{self.id}'
+        logger.warning(msg)
+        return await self.recieve_queue_send(message)
+
+    async def listen(self):
+        msg = f'Reversed Session {self.id} will listen send queue send-{self.id}'
+        logger.warning(msg)
+        return await self.send_queue_listen()
+    
+    async def recieve_queue_send(self, message: str) -> str:
+        self._check_initialized()
+        await self.recieve_channel.default_exchange.publish(
+            aio_pika.Message(message.encode()), 
+            routing_key=f'recieve-{self.id}'
+        )
+        return message
+    
+    async def _send_callback(self, message: aio_pika.IncomingMessage, *args, **kwargs):
+        logger.info(f"Recieved message (in send queue): {message.body.decode()}")
+        if self.auto_ack:
+            await message.ack()
+        if self._process_message is not None:
+            res = self._process_message(msg=message, session=self, *args, **kwargs)
+            if inspect.iscoroutine(res):
+                await res
+
+    async def send_queue_listen(self):
+        self._listen_future = asyncio.Future()
+        self._check_initialized()
+        logger.info(f"Started reversed session listening queue send-{self.id}")
+        consumer = await self.send_queue.consume(self._send_callback)
+        logger.info(f"Listening consumer: {consumer}")
+        logger.info("To exit press CTRL+C")
+        try:
+            await self._listen_future
+        except KeyboardInterrupt:
+            self._listen_future.set_result(True)
+            logger.info(f"Interrupted consumer: {consumer}")
+
+
+class JSONReversedSession(ReversedSession, JSONSession):
+    
+    async def send(self, message: dict) -> str:
+        msg = json.dumps(message, ensure_ascii=False)
+        await ReversedSession.send(self, msg)
+        return message
+    
+
+class CommunicationReversedSession(JSONReversedSession, CommunicationSession):
+
+    def __init__(self, communicator_name: str, connection_parameters: ConnectionParameters, uuid: UUID | str = None, auto_ack: bool = True, warn_on_reciever_differs: bool = True, *args, **kwargs) -> None:
+        super().__init__(communicator_name, connection_parameters, uuid, auto_ack, *args, **kwargs)
+        self.warn_on_reciever_differs = warn_on_reciever_differs
+
+    async def send(self, reciever: str, message: dict, answer_to: Optional[Union[UUID, str]] = None, message_id: Optional[Union[UUID, str]] = None, sender: str = None, warn_on_reciever_differs: bool = True, *args, **kwargs) -> MessageBodyDict:
+        body = {
+            'sender': sender or self.communicator_name, 
+            'reciever': reciever, 
+            'message': message,
+            'message_id': str(message_id) if message_id else str(uuid4())
+        }
+        if answer_to is not None:
+            body['answer_to'] = str(answer_to)
+        else:
+            body['answer_to'] = answer_to
+        return await JSONReversedSession.send(self, body)

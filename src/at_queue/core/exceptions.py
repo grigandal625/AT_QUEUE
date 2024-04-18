@@ -1,9 +1,6 @@
 from typing import TYPE_CHECKING, Union
 from uuid import UUID
 
-from at_queue.core.at_component import BaseComponent, BaseComponentMethod
-from at_queue.core.session import BasicSession
-
 if TYPE_CHECKING:
     from at_queue.core.session import BasicSession
     from at_queue.core.at_component import BaseComponent, BaseComponentMethod, Input
@@ -16,11 +13,18 @@ class ATQueueException(Exception):
         super().__init__(msg, *args)
         self.msg = msg
 
+    @property
+    def __dict__(self):
+        return {
+            'error_message': self.msg,
+            'error_type': self.__class__.__name__
+        }
+
 
 class SessionException(ATQueueException):
-    session: BasicSession
+    session: 'BasicSession'
     
-    def __init__(self, msg: str, session: BasicSession, *args) -> None:
+    def __init__(self, msg: str, session: 'BasicSession', *args) -> None:
         super().__init__(msg, session, *args)
         self.session = session
 
@@ -38,9 +42,9 @@ class SessionNotInitializedException(SessionException):
 
 
 class ATComponentException(SessionException):
-    component: BaseComponent
+    component: 'BaseComponent'
 
-    def __init__(self, msg: str, session: BasicSession, component: BaseComponent, *args) -> None:
+    def __init__(self, msg: str, session: 'BasicSession', component: 'BaseComponent', *args) -> None:
         super().__init__(msg, session, component, *args)
         self.component = component
 
@@ -52,11 +56,15 @@ class ATComponentException(SessionException):
         }
 
 
+class ComponentNotInitializedException(ATComponentException):
+    pass
+
+
 class ProcessMessageException(ATComponentException):
     processed_message: dict
     processed_message_id: Union[UUID, str]
 
-    def __init__(self, msg: str, session: BasicSession, component: BaseComponent, processed_message_id: Union[UUID, str], processed_message: dict, *args) -> None:
+    def __init__(self, msg: str, session: 'BasicSession', component: 'BaseComponent', processed_message_id: Union[UUID, str], processed_message: dict, *args) -> None:
         super().__init__(msg, session, component, processed_message_id, processed_message, *args)
         self.processed_message = processed_message
         self.processed_message_id = processed_message_id
@@ -76,9 +84,9 @@ class ExternalMethodException(ProcessMessageException):
     pass
 
 class ExecMethodException(ProcessMessageException):
-    method: BaseComponentMethod
+    method: 'BaseComponentMethod'
 
-    def __init__(self, msg: str, session: BasicSession, component: BaseComponent, processed_message_id: UUID | str, processed_message: dict, *args, method: BaseComponentMethod = None) -> None:
+    def __init__(self, msg: str, session: 'BasicSession', component: 'BaseComponent', processed_message_id: UUID | str, processed_message: dict, *args, method: 'BaseComponentMethod' = None) -> None:
         super().__init__(msg, session, component, processed_message_id, processed_message, *args, method)
         self.method = method
 
@@ -86,13 +94,13 @@ class ExecMethodException(ProcessMessageException):
     def __dict__(self):
         return {
             'method': self.method.name if self.method is not None else None,
-            **super.__dict__
+            **super().__dict__
         }
 
 class MethodArgumentSchemaException(ExecMethodException):
-    argument: Input
+    argument: 'Input'
 
-    def __init__(self, msg: str, session: BasicSession, component: BaseComponent, processed_message_id: UUID | str, processed_message: dict, method: BaseComponentMethod, argument: Input, *args) -> None:
+    def __init__(self, msg: str, session: 'BasicSession', component: 'BaseComponent', processed_message_id: UUID | str, processed_message: dict, method: 'BaseComponentMethod', argument: 'Input', *args) -> None:
         super().__init__(msg, session, component, processed_message_id, processed_message, argument, *args, method=method)
         self.argument = argument
 
@@ -102,3 +110,4 @@ class MethodArgumentSchemaException(ExecMethodException):
             'argument': self.argument.name,
             **super().__dict__,
         }
+    
