@@ -14,7 +14,7 @@ pip install git+https://github.com/grigandal625/AT_QUEUE.git#egg=at-queue
 или
 
 ```bash
-pip install https://github.com/grigandal625/AT_QUEUE/raw/master/dist/AT_QUEUE-latest-py3-none-any.whl
+pip install https://github.com/grigandal625/AT_QUEUE/raw/master/dist/at_queue-latest-py3-none-any.whl
 ```
 
 Для систем типа `linux` может потребоваться напрямую указать версию python:
@@ -181,7 +181,7 @@ async def main():
 
     # Обждание завершения
     await task
-    
+
 
 if __name__ == '__main__':
     asyncio.run(main())
