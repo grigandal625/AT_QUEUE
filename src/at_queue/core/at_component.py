@@ -151,6 +151,11 @@ class AuthorizedATComponentMethod(ATComponentMethod):
             )
         return super().__call__(*args, **kwargs)
 
+    def get_inputs(self) -> Dict[str, exceptions.Input]:
+        res = super().get_inputs()
+        res.pop('auth_token', None)
+        return res
+
 
 @dataclass(kw_only=True)
 class BaseComponent:

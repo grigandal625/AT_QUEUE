@@ -3,6 +3,8 @@ from at_queue.core.at_component import BaseComponent
 from at_queue.core.session import ConnectionParameters
 from typing import Union, TYPE_CHECKING
 from uuid import UUID
+from aio_pika import IncomingMessage
+
 if TYPE_CHECKING:
     from at_queue.core.at_registry import ATRegistry
 
@@ -44,10 +46,10 @@ class ATBrokerInstance:
 
         logger.info(f'Finish for "{self.component.name}" broker processing message {message_id}')
 
-    async def _process_message(self, *args, message: dict, sender: str, reciever: str, message_id: Union[str, UUID], answer_to: Union[str, UUID], **kwargs):
+    async def _process_message(self, *, message: dict, sender: str, reciever: str, message_id: Union[str, UUID], answer_to: Union[str, UUID], msg: IncomingMessage, **kwargs):
         reciever_broker = self.registry.get_broker(reciever)
         if reciever_broker:
-            await reciever_broker.session.send(reciever, message, answer_to=answer_to, message_id=message_id, sender=sender)
+            await reciever_broker.session.send(reciever, message, answer_to=answer_to, message_id=message_id, sender=sender, **msg.headers)
         else:
             await self.session.send(sender, {'errors': [f'Component "{reciever}" is not registered yet']}, answer_to=message_id, sender='registry')
 

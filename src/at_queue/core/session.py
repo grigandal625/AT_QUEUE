@@ -417,7 +417,7 @@ class JSONReversedSession(ReversedSession, JSONSession):
     
     async def send(self, message: dict, **headers: str) -> str:
         msg = json.dumps(message, ensure_ascii=False)
-        await ReversedSession.send(self, msg)
+        await ReversedSession.send(self, msg, **headers)
         return message
     
 
@@ -427,7 +427,7 @@ class CommunicationReversedSession(JSONReversedSession, CommunicationSession):
         super().__init__(communicator_name, connection_parameters, uuid, auto_ack, *args, **kwargs)
         self.warn_on_reciever_differs = warn_on_reciever_differs
 
-    async def send(self, reciever: str, message: dict, answer_to: Optional[Union[UUID, str]] = None, message_id: Optional[Union[UUID, str]] = None, sender: str = None, warn_on_reciever_differs: bool = True, *args, **kwargs) -> MessageBodyDict:
+    async def send(self, reciever: str, message: dict, answer_to: Optional[Union[UUID, str]] = None, message_id: Optional[Union[UUID, str]] = None, sender: str = None, warn_on_reciever_differs: bool = True, **headers: str) -> MessageBodyDict:
         body = {
             'sender': sender or self.communicator_name, 
             'reciever': reciever, 
@@ -438,4 +438,4 @@ class CommunicationReversedSession(JSONReversedSession, CommunicationSession):
             body['answer_to'] = str(answer_to)
         else:
             body['answer_to'] = answer_to
-        return await JSONReversedSession.send(self, body)
+        return await JSONReversedSession.send(self, body, **headers)
