@@ -109,3 +109,6 @@ class MethodArgumentSchemaException(ExecMethodException):
         result['argument'] = self.argument.name
         return result
     
+
+class NotAuthorizedMethodException(ExecMethodException):
+    pass

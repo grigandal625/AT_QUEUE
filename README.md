@@ -91,7 +91,7 @@ if __name__ == '__main__':
     asyncio.run(main())
 ```
 
-2. Модуль первого компонента 'int_summator.py':
+3. Модуль первого компонента 'int_summator.py':
 
 ```python
 from at_queue.core.at_component import ATComponent
@@ -122,7 +122,7 @@ if __name__ == '__main__':
     asyncio.run(main())
 ```
 
-3. Модуль второго компонента `sum_requester.py`:
+4. Модуль второго компонента `sum_requester.py`:
 
 ```python
 from at_queue.core.at_component import ATComponent

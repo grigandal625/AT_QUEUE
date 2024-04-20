@@ -84,9 +84,10 @@ class BaseComponentMethod:
 class ATComponentMethod(BaseComponentMethod):
     orig: Callable
     owner: 'ATComponent' = None
+    metadata: Dict
 
     def __init__(self, orig: Callable) -> None:
-
+        self.metadata = {}
         self.orig = orig
         if orig.__name__ == '<lambda>':
             raise TypeError("Can't create a component method for anonymous function")
@@ -96,11 +97,20 @@ class ATComponentMethod(BaseComponentMethod):
         output = self.get_output()
         super(ATComponentMethod, self).__init__(name=name, inputs=inputs, output=output)
 
-    def __call__(self, *args, **kwargs):
+    def _check_owner(self):
         if not self.owner:
             raise ValueError(f'Missing ATComponent instance to call "{self.name}"')
+        return True
+
+    def __call__(self, *args, **kwargs):
+        self._check_owner()
         return self.orig(self.owner, *args, **kwargs)
     
+    def execute(self, *, processed_message: Dict, processed_message_id: Union[str, UUID], exec_arguments: Dict):
+        self.metadata['processed_message'] = processed_message
+        self.metadata['processed_message_id'] = processed_message_id
+        return self.__call__(**exec_arguments)
+
     @property
     def args_schema(self) -> dict:
         return method_to_json_schema(self.orig)
@@ -127,6 +137,20 @@ class ATComponentMethod(BaseComponentMethod):
             method=self
         )
     
+
+class AuthorizedATComponentMethod(ATComponentMethod):
+    def __call__(self, *args, **kwargs):
+        self._check_owner()
+        if 'auth_token' not in kwargs:
+            raise exceptions.NotAuthorizedMethodException(
+                f'Missing auth_token argument to execute method {self.owner.name}.{self.name}', 
+                session=self.owner.session, 
+                component=self.owner, 
+                processed_message=self.metadata.get('processed_message', None),
+                processed_message_id=self.metadata.get('processed_message_id', None)
+            )
+        return super().__call__(*args, **kwargs)
+
 
 @dataclass(kw_only=True)
 class BaseComponent:
@@ -235,16 +259,16 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
 
         logger.info(f'Finish for "{self.name}" processing message {message_id}')
 
-    async def _process_message(self, *args, message: dict, sender: str, reciever: str, message_id: str, **kwargs):
+    async def _process_message(self, *args, message: dict, sender: str, reciever: str, message_id: str, msg: aio_pika.IncomingMessage, **kwargs):
         message_type = message.get('type')
         try:
             if message_type == 'exec_method':
-                result = await self._exec_method(*args,  message=message, sender=sender, message_id=message_id, reciever=reciever, **kwargs)
+                result = await self._exec_method(*args,  message=message, sender=sender, message_id=message_id, reciever=reciever, msg=msg, **kwargs)
         except Exception as e:
             logger.error(e)
             logger.error(traceback.format_exc())
     
-    async def _exec_method(self, *args, message, sender, message_id, **kwargs):
+    async def _exec_method(self, *args, message: dict, sender: str, message_id: Union[str, UUID], msg: aio_pika.IncomingMessage, **kwargs):
         method_name = message.get('method')
         if method_name is None:
             msg = f'Component "{self.name}" received execute method message with id "{message_id}" from "{sender}" but method name is not specified'
@@ -252,7 +276,7 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
             logger.error(e.__dict__)
             self.session.send(reciever=sender, message={'errors': [e.__dict__]}, answer_to=message_id, await_answer=False)
 
-        method = self.methods.get(method_name)
+        method: ATComponentMethod = self.methods.get(method_name)
 
         if method is None:
             msg = f'Component "{self.name}" received execute method message with id "{message_id}" from "{sender}" but got unknown method name "{method_name}". Avalible method names are: {[m for m in self.methods]}'
@@ -262,6 +286,10 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
 
         method_args = message.get('args', {})
         exec_kwargs = {}
+        if isinstance(method, AuthorizedATComponentMethod):
+            auth_token = msg.headers.get('auth_token', None)
+            if auth_token is not None:
+                exec_kwargs['auth_token'] = auth_token
         for input_name, input in method.inputs.items():
             arg = method_args.get(input_name)
             try:
@@ -280,14 +308,17 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
                 raise e                
             exec_kwargs[input_name] = arg
 
-        result = method(**exec_kwargs)
+        result = method.execute(processed_message=message, processed_message_id=message_id,**exec_kwargs)
         if inspect.iscoroutine(result):
             result = await result
         await self.session.send(reciever=sender, message={'type': 'method_result', 'result': result}, answer_to=message_id, await_answer=False)
         return result
     
-    async def exec_external_method(self, reciever: str, methode_name: str, method_args: dict) -> dict:
+    async def exec_external_method(self, reciever: str, methode_name: str, method_args: dict, auth_token: str = None) -> dict:
         self.session._check_initialized()
+        headers = {}
+        if auth_token is not None:
+            headers['auth_token'] = auth_token
         exec_result = await self.session.send_await(
             reciever=reciever, 
             message={
@@ -295,6 +326,7 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
                 'method': methode_name,
                 'args': method_args
             },
+            headers=headers
         )
         errors = exec_result.get('errors')
         if errors is not None:

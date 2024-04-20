@@ -161,10 +161,10 @@ class BasicSession:
     def process_message(self, func: Union[Callable, Awaitable]):
         self._process_message = func
 
-    async def send(self, message: str) -> str:
+    async def send(self, message: str, **headers: str) -> str:
         self._check_initialized()
         await self.send_channel.default_exchange.publish(
-            aio_pika.Message(message.encode()), 
+            aio_pika.Message(message.encode(), headers=headers), 
             routing_key=f'send-{self.id}'
         )
         return message
@@ -190,9 +190,9 @@ class BasicSession:
 
 class JSONSession(BasicSession):
 
-    async def send(self, message: Dict) -> Dict:
+    async def send(self, message: Dict, **headers: str) -> Dict:
         msg = json.dumps(message, ensure_ascii=False)
-        await super().send(msg)
+        await super().send(msg, **headers)
         return message
     
     def jsonify_body(self, func: Union[Callable, Awaitable]) -> Union[Callable, Awaitable]:
@@ -241,7 +241,7 @@ class CommunicationSession(JSONSession):
         self.communicator_name = communicator_name
         self.warn_on_reciever_differs = warn_on_reciever_differs
 
-    async def send(self, reciever: str, message: dict, answer_to: Optional[Union[UUID, str]] = None, message_id: Optional[Union[UUID, str]] = None, sender: str = None) -> MessageBodyDict:
+    async def send(self, reciever: str, message: dict, answer_to: Optional[Union[UUID, str]] = None, message_id: Optional[Union[UUID, str]] = None, sender: str = None, **headres: str) -> MessageBodyDict:
         body = {
             'sender': sender or self.communicator_name, 
             'reciever': reciever, 
@@ -252,7 +252,7 @@ class CommunicationSession(JSONSession):
             body['answer_to'] = str(answer_to)
         else:
             body['answer_to'] = answer_to
-        return await super().send(body)
+        return await super().send(body, **headres)
     
     def communicate_body(self, func: Union[Callable, Awaitable]) -> Union[Callable, Awaitable]:
 
@@ -315,11 +315,12 @@ class QueueSession(CommunicationSession):
         self.callback_tasks = []
         self.process_message(lambda *args, **kwargs: None)
 
-    async def send(self, reciever: str, message: dict, answer_to: Optional[Union[UUID, str]] = None, await_answer: bool = True, callback: Union[Callable, Awaitable] = None, message_id: Union[str, UUID] = None, sender: str = None) -> AwaitingMessageBodyDict:
-        msg = await super().send(reciever, message, answer_to, message_id=message_id, sender=sender)
+    async def send(self, reciever: str, message: dict, answer_to: Optional[Union[UUID, str]] = None, await_answer: bool = True, callback: Union[Callable, Awaitable] = None, message_id: Union[str, UUID] = None, sender: str = None, **headers: str) -> AwaitingMessageBodyDict:
+        msg = await super().send(reciever, message, answer_to, message_id=message_id, sender=sender, **headers)
         if await_answer:
             msg['callback'] = callback
             msg['future'] = asyncio.Future()
+            msg['_headers'] = headers
             self.awaiting_messages[str(msg['message_id'])] = msg
         return msg
     
@@ -359,8 +360,8 @@ class MSGAwaitSession(QueueSession):
         super().__init__(communicator_name, connection_parameters, uuid, auto_ack=auto_ack, warn_on_reciever_differs=warn_on_reciever_differs, *args, **kwargs)
         self.process_message(lambda *args, **kwargs: None)
 
-    async def send_await(self, reciever: str, message: dict, answer_to: Optional[Union[UUID, str]] = None, await_answer: bool = True, callback: Callable[..., Any] = None):
-        message: AwaitingMessageBodyDict = await self.send(reciever, message, answer_to, await_answer, callback)
+    async def send_await(self, reciever: str, message: dict, answer_to: Optional[Union[UUID, str]] = None, await_answer: bool = True, callback: Callable[..., Any] = None, **headers: str):
+        message: AwaitingMessageBodyDict = await self.send(reciever, message, answer_to, await_answer, callback, **headers)
         self.awaiting_messages[str(message['message_id'])] = message
         future = message.get('future')
         if future is not None:
@@ -371,20 +372,20 @@ class MSGAwaitSession(QueueSession):
 
 class ReversedSession(BasicSession):
 
-    async def send(self, message: str) -> str:
+    async def send(self, message: str, **headers: str) -> str:
         msg = f'Reversed Session {self.id} will send message {message} to recieve queue recieve-{self.id}'
         logger.warning(msg)
-        return await self.recieve_queue_send(message)
+        return await self.recieve_queue_send(message, **headers)
 
     async def listen(self):
         msg = f'Reversed Session {self.id} will listen send queue send-{self.id}'
         logger.warning(msg)
         return await self.send_queue_listen()
     
-    async def recieve_queue_send(self, message: str) -> str:
+    async def recieve_queue_send(self, message: str, **headers: str) -> str:
         self._check_initialized()
         await self.recieve_channel.default_exchange.publish(
-            aio_pika.Message(message.encode()), 
+            aio_pika.Message(message.encode(), headers=headers), 
             routing_key=f'recieve-{self.id}'
         )
         return message
@@ -414,7 +415,7 @@ class ReversedSession(BasicSession):
 
 class JSONReversedSession(ReversedSession, JSONSession):
     
-    async def send(self, message: dict) -> str:
+    async def send(self, message: dict, **headers: str) -> str:
         msg = json.dumps(message, ensure_ascii=False)
         await ReversedSession.send(self, msg)
         return message
