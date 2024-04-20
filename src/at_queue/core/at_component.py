@@ -331,7 +331,7 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
                 'method': methode_name,
                 'args': method_args
             },
-            headers=headers
+            **headers
         )
         errors = exec_result.get('errors')
         if errors is not None:
