@@ -151,7 +151,7 @@ class AuthorizedATComponentMethod(ATComponentMethod):
             )
         return super().__call__(*args, **kwargs)
 
-    def get_inputs(self) -> Dict[str, exceptions.Input]:
+    def get_inputs(self) -> Dict[str, Input]:
         res = super().get_inputs()
         res.pop('auth_token', None)
         return res
@@ -313,11 +313,20 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
                 raise e                
             exec_kwargs[input_name] = arg
 
-        result = method.execute(processed_message=message, processed_message_id=message_id,**exec_kwargs)
-        if inspect.iscoroutine(result):
-            result = await result
-        await self.session.send(reciever=sender, message={'type': 'method_result', 'result': result}, answer_to=message_id, await_answer=False)
-        return result
+        try:
+            result = method.execute(processed_message=message, processed_message_id=message_id, exec_arguments=exec_kwargs)
+            if inspect.iscoroutine(result):
+                result = await result
+            await self.session.send(reciever=sender, message={'type': 'method_result', 'result': result}, answer_to=message_id, await_answer=False)
+            return result
+        except exceptions.ExecMethodException as e:
+            logger.error(traceback.format_exc())
+            await self.session.send(reciever=sender, message={'errors': [e.__dict__]}, answer_to=message_id, await_answer=False)
+            return
+        except Exception as e:
+            logger.error(traceback.format_exc())
+            await self.session.send(reciever=sender, message={'errors': [str(e)]}, answer_to=message_id, await_answer=False)
+            return
     
     async def exec_external_method(self, reciever: str, methode_name: str, method_args: dict, auth_token: str = None) -> dict:
         self.session._check_initialized()

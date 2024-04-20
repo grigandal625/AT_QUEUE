@@ -42,7 +42,7 @@ class ATBrokerInstance:
         if sender != self.component.name:
             logger.warning(f'Component "{self.component.name}" sended message that is not from "{self.component.name}", but from "{reciever}"')
 
-        await self._process_message(self, message=message, sender=sender, reciever=reciever, message_id=message_id, *args, **kwargs)
+        await self._process_message(message=message, sender=sender, reciever=reciever, message_id=message_id, *args, **kwargs)
 
         logger.info(f'Finish for "{self.component.name}" broker processing message {message_id}')
 
