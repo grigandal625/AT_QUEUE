@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 jsonschema = "*"
 aio-pika = "*"
+at-config = {git = "https://github.com/grigandal625/AT_CONFIG.git"}
 
 [dev-packages]
 

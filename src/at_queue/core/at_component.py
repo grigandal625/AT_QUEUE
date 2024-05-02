@@ -13,6 +13,8 @@ import logging
 import aio_pika
 import traceback
 import json
+from at_config.core.at_config_handler import ATComponentConfig
+from at_config.core.at_config_loader import load_component_config
 
 
 logger = logging.getLogger(__name__)
@@ -267,12 +269,32 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
     async def _process_message(self, *args, message: dict, sender: str, reciever: str, message_id: str, msg: aio_pika.IncomingMessage, **kwargs):
         message_type = message.get('type')
         try:
+            if message_type == 'configurate':
+                result = await self._configurate(*args,  message=message, sender=sender, message_id=message_id, reciever=reciever, msg=msg, **kwargs)
             if message_type == 'exec_method':
                 result = await self._exec_method(*args,  message=message, sender=sender, message_id=message_id, reciever=reciever, msg=msg, **kwargs)
         except Exception as e:
             logger.error(e)
             logger.error(traceback.format_exc())
-    
+
+    async def _configurate(self, *args, message: dict, sender: str, message_id: Union[str, UUID], msg: aio_pika.IncomingMessage, **kwargs):
+        config_data = message.get('config')
+        if config_data is None:
+            msg = f'Component "{self.name}" received configurate message with id "{message_id}" from "{sender}" but configuration is not specified'
+            e = exceptions.ProcessMessageException(msg, self.session, self, message)
+            logger.error(e.__dict__)
+            await self.session.send(reciever=sender, message={'errors': [e.__dict__]}, answer_to=message_id, await_answer=False)
+            asyncio.sleep(0)
+            raise e
+        
+        auth_token = msg.headers.get('auth_token', None)
+        config = load_component_config(config_data)
+        result = await self.configurate(config, auth_token=auth_token)
+        await self.session.send(reciever=sender, message={'result': result}, answer_to=message_id, await_answer=False)
+
+    async def configurate(self, config: ATComponentConfig, auth_token: str = None, *args, **kwargs) -> bool:
+        raise NotImplementedError()
+            
     async def _exec_method(self, *args, message: dict, sender: str, message_id: Union[str, UUID], msg: aio_pika.IncomingMessage, **kwargs):
         method_name = message.get('method')
         if method_name is None:
@@ -280,15 +302,18 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
             e = exceptions.ProcessMessageException(msg, self.session, self, message)
             logger.error(e.__dict__)
             self.session.send(reciever=sender, message={'errors': [e.__dict__]}, answer_to=message_id, await_answer=False)
-
+            raise e
+        
         method: ATComponentMethod = self.methods.get(method_name)
 
         if method is None:
             msg = f'Component "{self.name}" received execute method message with id "{message_id}" from "{sender}" but got unknown method name "{method_name}". Avalible method names are: {[m for m in self.methods]}'
             e = exceptions.ExecMethodException(msg, self.session, self, message)
             logger.error(e.__dict__)
-            self.session.send(reciever=sender, message={'errors': [e.__dict__]}, answer_to=message_id, await_answer=False)
-
+            await self.session.send(reciever=sender, message={'errors': [e.__dict__]}, answer_to=message_id, await_answer=False)
+            asyncio.sleep(0)
+            raise e
+        
         method_args = message.get('args', {})
         exec_kwargs = {}
         if isinstance(method, AuthorizedATComponentMethod):
