@@ -289,10 +289,10 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
         
         auth_token = msg.headers.get('auth_token', None)
         config = load_component_config(config_data)
-        result = await self.configurate(config, auth_token=auth_token)
+        result = await self.perform_configurate(config, auth_token=auth_token)
         await self.session.send(reciever=sender, message={'result': result}, answer_to=message_id, await_answer=False)
 
-    async def configurate(self, config: ATComponentConfig, auth_token: str = None, *args, **kwargs) -> bool:
+    async def perform_configurate(self, config: ATComponentConfig, auth_token: str = None, *args, **kwargs) -> bool:
         raise NotImplementedError()
             
     async def _exec_method(self, *args, message: dict, sender: str, message_id: Union[str, UUID], msg: aio_pika.IncomingMessage, **kwargs):
