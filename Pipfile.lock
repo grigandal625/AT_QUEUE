@@ -34,7 +34,7 @@
         },
         "at-config": {
             "git": "https://github.com/grigandal625/AT_CONFIG.git",
-            "ref": "bcea060e2c92a28cfd2c872b43dddeffb544fabb"
+            "ref": "1558cf1267570a2ba0c7d1ddab9130c610782e58"
         },
         "attrs": {
             "hashes": [
