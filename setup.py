@@ -29,7 +29,7 @@ with pathlib.Path('requirements.txt').open() as requirements_txt:
 if __name__ == '__main__':
     setup(
         name='at-queue',
-        version=os.getenv('PACKAGE_VERSION', '0.0.dev7'),
+        version=os.getenv('PACKAGE_VERSION', '0.0.dev8'),
         packages=find_packages(where='src'),
         package_dir={'': 'src'},
         description='AT-TECHNOLOGY message queue component.',

@@ -269,13 +269,25 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
     async def _process_message(self, *args, message: dict, sender: str, reciever: str, message_id: str, msg: aio_pika.IncomingMessage, **kwargs):
         message_type = message.get('type')
         try:
+            if message_type == 'ping':
+                result = await self.session.send(reciever=sender, message={'result': 'pong'}, answer_to=message_id, **msg.headers)
             if message_type == 'configurate':
                 result = await self._configurate(*args,  message=message, sender=sender, message_id=message_id, reciever=reciever, msg=msg, **kwargs)
+            if message_type == 'check_configured':
+                configurated = await self._is_configured(*args, message=message, sender=sender, message_id=message_id, reciever=reciever, msg=msg, **kwargs)
+                result = await self.session.send(reciever=sender, message={'result': configurated}, answer_to=message_id, **msg.headers)
             if message_type == 'exec_method':
                 result = await self._exec_method(*args,  message=message, sender=sender, message_id=message_id, reciever=reciever, msg=msg, **kwargs)
         except Exception as e:
             logger.error(e)
             logger.error(traceback.format_exc())
+
+    async def _is_configured(self, *args, message: dict, sender: str, message_id: Union[str, UUID], reciever: str, msg: aio_pika.IncomingMessage, **kwargs) -> bool:
+        auth_token = msg.headers.get('auth_token')
+        return await self.check_configured(*args, message=message, sender=sender, message_id=message_id, reciever=reciever, msg=msg, auth_token=auth_token, **kwargs)
+
+    async def check_configured(self, *args, message: dict, sender: str, message_id: Union[str, UUID], reciever: str, msg: aio_pika.IncomingMessage, auth_token: str = None, **kwargs) -> bool:
+        return True
 
     async def _configurate(self, *args, message: dict, sender: str, message_id: Union[str, UUID], msg: aio_pika.IncomingMessage, **kwargs):
         config_data = message.get('config')
@@ -293,7 +305,7 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
         await self.session.send(reciever=sender, message={'result': result}, answer_to=message_id, await_answer=False)
 
     async def perform_configurate(self, config: ATComponentConfig, auth_token: str = None, *args, **kwargs) -> bool:
-        raise NotImplementedError()
+        return True
             
     async def _exec_method(self, *args, message: dict, sender: str, message_id: Union[str, UUID], msg: aio_pika.IncomingMessage, **kwargs):
         method_name = message.get('method')
@@ -379,6 +391,24 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
             logger.warning(f'Recieved unexpected message type "{msg_type}". Expected: "method_result"')
         return exec_result.get('result')
     
+    async def ping_external(self, reciever: str) -> bool:
+        result = await self.session.send_await(reciever, {'type': 'ping'})
+        if result.get('result') == 'pong':
+            return True
+        return False
+    
+    async def check_external_configured(self, reciever: str, auth_token: str = None) -> bool:
+        result = await self.session.send_await(reciever, {'type': 'check_configured'}, auth_token=auth_token)
+        if result.get('result'):
+            return True
+        return False
+    
+    async def check_external_registered(self, reciever: str) -> bool:
+        result = await self.session.send_await('registry', {'type': 'check_registered', 'component': reciever})
+        if result.get('result'):
+            return True
+        return False
+
     async def start(self):
         self.session._check_initialized()
         await self.session.listen()
