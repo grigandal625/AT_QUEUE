@@ -337,7 +337,10 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
         for input_name, input in method.inputs.items():
             arg = method_args.get(input_name)
             try:
-                validate(arg, input.schema)
+                if arg is None and input.required:
+                    raise ValidationError(f'{input_name} is required')
+                elif arg is not None:
+                    validate(arg, input.schema)
             except SchemaError as s:
                 msg = str(s)
                 e = exceptions.MethodArgumentSchemaException(msg, self.session, self, message_id, message_id, method, input)
