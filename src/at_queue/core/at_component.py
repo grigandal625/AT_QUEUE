@@ -192,6 +192,8 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
     initialized: bool = False
     register_listen_task: asyncio.Task
 
+    started: bool = False
+
     def __init__(self, connection_parameters: ConnectionParameters, *args, **kwargs):
         kwargs['name'] = kwargs.get('name', self.__class__.__name__)
         kwargs['methods'] = self._methods
@@ -411,4 +413,6 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
 
     async def start(self):
         self.session._check_initialized()
+        self.started = True
         await self.session.listen()
+        self.started = False
