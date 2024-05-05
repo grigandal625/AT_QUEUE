@@ -50,7 +50,7 @@ class ATBrokerInstance:
         if reciever == 'registry':
             if message.get('type') == 'check_registered':
                 component = message.get('component')
-                await self.session.send(sender, {'result': component in self.registry}, answer_to=message_id, sender='registry')
+                await self.session.send(sender, {'result': component in self.registry._registry}, answer_to=message_id, sender='registry')
             elif message.get('type') == 'inspect':
                 if sender != 'inspector':
                     logger.warning(f'Recieved register message {message} with id {message_id} from {sender}')
