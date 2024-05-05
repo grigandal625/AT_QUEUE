@@ -1,4 +1,5 @@
 from at_queue.core.at_broker import ATBrokerInstance
+from at_queue.core.at_component import ATComponent
 from at_queue.core.session import ConnectionParameters, CommunicationReversedSession
 from at_queue.core.at_component import BaseComponent, BaseComponentMethod, Input, Output
 from typing import Dict, Union
@@ -28,10 +29,27 @@ class ATRegistry:
         self.initialized = True
 
     async def _on_register(self, *args, message: dict, sender: str, reciever: str, message_id: str, **kwargs):
-        if message.get('type') != 'register':
+        if message.get('type') not in ['register', 'inspect']:
             logger.warning(f'Recieved register message {message} with id {message_id} from {sender}')
         if reciever != 'registry':
             logger.warning(f'Recieved register message {message} with id {message_id} from {sender} that is not sent to "registry" but to "{reciever}"')
+        
+        if message.get('type') == 'inspect':
+            if sender != 'inspector':
+                logger.warning(f'Recieved register message {message} with id {message_id} from {sender}')
+            component_name = message.get('component')
+            if component_name is None:
+                return await self.session.send(sender, {'errors': ["Field \"component\" (str) is required"]}, answer_to=message_id)
+            broker = self._registry.get(component_name)
+            if broker is None:
+                return await self.session.send(sender, {'errors': [f'Component "{component_name}" is not registered']}, answer_to=message_id)
+            return await self.session.send(sender, {
+                'broker': {
+                    'session_id': str(broker.session.uuid)
+                },
+                'component': broker.component.__dict__
+            }, answer_to=message_id)
+        
         component_data = message.get('component')
         component = self._build_component(component_data)
         session_id = message.get('session_id') or uuid3(NAMESPACE_OID, component.name)
@@ -86,3 +104,19 @@ class ATRegistry:
             if start_task:
                 await start_task
         await self.session.stop()
+
+
+class ATRegistryInspector(ATComponent):
+
+    def __init__(self, connection_parameters: ConnectionParameters, *args, **kwargs):
+        kwargs['name'] = 'inspector'
+        super().__init__(connection_parameters, *args, **kwargs)
+
+    async def inspect(self, component):
+        return await self.session.send_await(
+            'registry',
+            {
+                'type': 'inspect',
+                'component': component
+            }
+        )

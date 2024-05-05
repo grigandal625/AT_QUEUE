@@ -51,6 +51,21 @@ class ATBrokerInstance:
             if message.get('type') == 'check_registered':
                 component = message.get('component')
                 await self.session.send(sender, {'result': component in self.registry}, answer_to=message_id, sender='registry')
+            elif message.get('type') == 'inspect':
+                if sender != 'inspector':
+                    logger.warning(f'Recieved register message {message} with id {message_id} from {sender}')
+                component_name = message.get('component')
+                if component_name is None:
+                    return await self.session.send(sender, {'errors': ["Field \"component\" (str) is required"]}, answer_to=message_id)
+                broker = self.registry._registry.get(component_name)
+                if broker is None:
+                    return await self.session.send(sender, {'errors': [f'Component "{component_name}" is not registered']}, answer_to=message_id)
+                return await self.session.send(sender, {
+                    'broker': {
+                        'session_id': str(broker.session.uuid)
+                    },
+                    'component': broker.component.__dict__
+                }, answer_to=message_id)
         else:
             reciever_broker = self.registry.get_broker(reciever)
             if reciever_broker:
