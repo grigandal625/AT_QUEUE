@@ -1,6 +1,6 @@
 aio-pika==9.4.1
 aiormq==6.8.0
-at-config @ git+https://github.com/grigandal625/AT_CONFIG.git@1558cf1267570a2ba0c7d1ddab9130c610782e58
+at-config @ git+https://github.com/grigandal625/AT_CONFIG.git@b08051462f12433d4d89986c60f605bb63b57fc7
 attrs==23.2.0
 contextlib2==21.6.0
 idna==3.7
