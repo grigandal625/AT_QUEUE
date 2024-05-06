@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "2ccca8938370f41c18dc40bd4c3def84387103c803566c0e5125e328a32dfd61"
+            "sha256": "9b790be460cf75c553492960c38ae64b7d42a13a49db604377b224ad35da9502"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -34,7 +34,7 @@
             "version": "==6.8.0"
         },
         "at-config": {
-            "git": "git+https://github.com/grigandal625/AT_CONFIG.git#egg=at-config",
+            "git": "git+https://github.com/grigandal625/AT_CONFIG.git",
             "ref": "071f93915922d887f09e211a30cebb113df2d69b"
         },
         "attrs": {

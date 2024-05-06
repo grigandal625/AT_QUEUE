@@ -7,7 +7,7 @@ name = "pypi"
 jsonschema = "*"
 aio-pika = "*"
 install = "*"
-at-config = {git = "git+https://github.com/grigandal625/AT_CONFIG.git#egg=at-config"}
+at-config = {ref = "master", git = "git+https://github.com/grigandal625/AT_CONFIG.git"}
 
 [dev-packages]
 
