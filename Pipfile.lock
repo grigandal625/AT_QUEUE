@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "9b790be460cf75c553492960c38ae64b7d42a13a49db604377b224ad35da9502"
+            "sha256": "eadfa5ab82e1488dda2d08bbc6fa9827a1e6f84c5f2fa3418236a7143c3794ea"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -35,7 +35,7 @@
         },
         "at-config": {
             "git": "git+https://github.com/grigandal625/AT_CONFIG.git",
-            "ref": "071f93915922d887f09e211a30cebb113df2d69b"
+            "ref": "8b39ed4ce096621de3a1c26ccfd201659dcd95d7"
         },
         "attrs": {
             "hashes": [
@@ -44,14 +44,6 @@
             ],
             "markers": "python_version >= '3.7'",
             "version": "==23.2.0"
-        },
-        "contextlib2": {
-            "hashes": [
-                "sha256:3fbdb64466afd23abaf6c977627b75b6139a5a3e8ce38405c5b413aed7a0471f",
-                "sha256:ab1e2bfe1d01d968e1b7e8d9023bc51ef3509bba217bb730cee3827e1ee82869"
-            ],
-            "markers": "python_version >= '3.6'",
-            "version": "==21.6.0"
         },
         "idna": {
             "hashes": [
@@ -363,10 +355,10 @@
         },
         "schema": {
             "hashes": [
-                "sha256:f06717112c61895cabc4707752b88716e8420a8819d71404501e114f91043197",
-                "sha256:f3ffdeeada09ec34bf40d7d79996d9f7175db93b7a5065de0faa7f41083c1e6c"
+                "sha256:5d976a5b50f36e74e2157b47097b60002bd4d42e65425fcc9c9befadb4255dde",
+                "sha256:7da553abd2958a19dc2547c388cde53398b39196175a9be59ea1caf5ab0a1807"
             ],
-            "version": "==0.7.5"
+            "version": "==0.7.7"
         },
         "yarl": {
             "hashes": [
@@ -465,5 +457,15 @@
             "version": "==1.9.4"
         }
     },
-    "develop": {}
+    "develop": {
+        "wheel": {
+            "hashes": [
+                "sha256:465ef92c69fa5c5da2d1cf8ac40559a8c940886afcef87dcf14b9470862f1d85",
+                "sha256:55c570405f142630c6b9f72fe09d9b67cf1477fcf543ae5b8dcb1f5b7377da81"
+            ],
+            "index": "pypi",
+            "markers": "python_version >= '3.8'",
+            "version": "==0.43.0"
+        }
+    }
 }

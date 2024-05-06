@@ -7,9 +7,10 @@ name = "pypi"
 jsonschema = "*"
 aio-pika = "*"
 install = "*"
-at-config = {ref = "master", git = "git+https://github.com/grigandal625/AT_CONFIG.git"}
+at-config = {git = "git+https://github.com/grigandal625/AT_CONFIG.git"}
 
 [dev-packages]
+wheel = "*"
 
 [requires]
 python_version = "3.10"
