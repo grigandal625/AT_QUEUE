@@ -23,6 +23,6 @@ stable:
 latest:
 	cp dist/at_queue-*.*-py3-none-any.whl dist/at_queue-latest-py3-none-any.whl
 requirements:
-	pipenv run pip freeze | sed '/^-e git/d' > requirements.txt
+	pipenv requirements | sed '/^-i/d' > requirements.txt 
 rabbit:
 	docker run --rm -p 15672:15672 -p 5672:5672 rabbitmq:management
