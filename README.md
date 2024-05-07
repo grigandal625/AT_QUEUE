@@ -8,28 +8,22 @@
 2. Установть пакет следующей командой:
 
 ```bash
-pip install git+https://github.com/grigandal625/AT_QUEUE.git#egg=at-queue
+pip install git+https://github.com/grigandal625/AT_QUEUE.git@master
 ```
 
-или
+Для более ранних версий pip команда будет иметь вид
 
 ```bash
-pip install https://github.com/grigandal625/AT_QUEUE/raw/master/dist/at_queue-latest-py3-none-any.whl
+pip install git+https://github.com/grigandal625/AT_QUEUE.git#egg=at-queue
 ```
 
 Для систем типа `linux` может потребоваться напрямую указать версию python:
 
 ```bash
-python3.10 -m pip install git+https://github.com/grigandal625/AT_QUEUE.git#egg=at-queue
+python3.10 -m pip install git+https://github.com/grigandal625/AT_QUEUE.git@master"
 ```
 
-или
-
-```bash
-python3.10 -m pip install https://github.com/grigandal625/AT_QUEUE/raw/master/dist/at_queue-latest-py3-none-any.whl
-```
-
-Также можно использовать пакетный менеджер pipenv
+Также можно использовать пакетный менеджер pipenv, poetry
 
 Далее для работы пакета необходимо установить и запустить брокер [RabbitMQ](https://www.rabbitmq.com/). Его можно установить и запустить в основной операционной системе, а также можно запустить с использованием `docker` с помощью команды 
 
