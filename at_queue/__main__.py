@@ -3,6 +3,7 @@ from at_queue.core.at_registry import ATRegistry
 import argparse
 import asyncio
 import logging
+import os
 
 parser = argparse.ArgumentParser(
     prog='at-queue',
@@ -19,7 +20,15 @@ parser.add_argument('-v',  '--virtualhost', '--virtual-host', '--virtual_host', 
 async def main(**connection_kwargs):
     connection_parameters = ConnectionParameters(**connection_kwargs)
     registry = ATRegistry(connection_parameters)
+
     await registry.initialize()
+
+    if not os.path.exists('/var/run/at_queue/'):
+        os.makedirs('/var/run/at_queue/')
+
+    with open('/var/run/at_queue/pidfile.pid', 'w') as f:
+        f.write(str(os.getpid()))
+        
     await registry.start()
 
 
