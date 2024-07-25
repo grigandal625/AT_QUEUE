@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "at-queue"
-version = "0.1.dev2"
+version = "0.1.dev3"
 description = ""
 authors = ["grigadnal625 <grigandal625@gmail.com>"]
 readme = "README.md"
