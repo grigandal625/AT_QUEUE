@@ -198,7 +198,7 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
         kwargs['name'] = kwargs.get('name', self.__class__.__name__)
         kwargs['methods'] = self._methods
         super().__init__(*args, **kwargs)
-        self.register_future = asyncio.Future()
+        self.register_future = asyncio.get_event_loop().create_future()
         self.register_session = MSGAwaitSession(self.name, connection_parameters, uuid3(NAMESPACE_OID, 'at_registry'), auto_ack=False, warn_on_reciever_differs=False)
 
     @property
