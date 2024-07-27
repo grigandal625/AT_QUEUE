@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, status
 from at_queue.core.at_registry import ATRegistryInspector, ConnectionParameters
 from at_queue.utils.arguments import get_args
 from at_queue.debug.models import ExecMetod, ExecMethodResult
@@ -40,7 +40,7 @@ async def exec_method(data: ExecMetod) -> ExecMethodResult:
     try:
         result = await inspector.exec_external_method(data.component, data.method, data.kwargs, auth_token=data.auth_token)
     except ATQueueException as e:
-        raise HTTPException(detail=e.__dict__)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=e.__dict__)
     return {'result': result}
 
 
