@@ -38,7 +38,7 @@ async def get_components() -> Dict:
 async def exec_method(data: ExecMetod) -> ExecMethodResult:
     inspector = await get_inspector()
     try:
-        result = await inspector.exec_external_method(data.component, data.method, data.kwargs)
+        result = await inspector.exec_external_method(data.component, data.method, data.kwargs, auth_token=data.auth_token)
     except ATQueueException as e:
         raise HTTPException(detail=e.__dict__)
     return {'result': result}
