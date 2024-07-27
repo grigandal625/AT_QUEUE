@@ -4,20 +4,12 @@ import argparse
 import asyncio
 import logging
 import os
-
-parser = argparse.ArgumentParser(
-    prog='at-queue',
-    description='AT-TECHNOLOGY message queue component')
-
-parser.add_argument('-u', '--url', help="RabbitMQ URL to connect", required=False, default=None)
-parser.add_argument('-H', '--host', help="RabbitMQ host to connect", required=False, default="localhost")
-parser.add_argument('-p', '--port', help="RabbitMQ port to connect", required=False, default=5672)
-parser.add_argument('-L', '--login', '-U', '--user', '--user-name', '--username', '--user_name', dest="login", help="RabbitMQ login to connect", required=False, default="guest")
-parser.add_argument('-P', '--password', help="RabbitMQ password to connect", required=False, default="guest")
-parser.add_argument('-v',  '--virtualhost', '--virtual-host', '--virtual_host', dest="virtualhost", help="RabbitMQ virtual host to connect", required=False, default="/")
+from at_queue.utils.arguments import parser
+from at_queue.debug.server import main as debugger_main
 
 
 async def main(**connection_kwargs):
+    loop = asyncio.get_event_loop()
     connection_parameters = ConnectionParameters(**connection_kwargs)
     registry = ATRegistry(connection_parameters)
 
@@ -31,7 +23,10 @@ async def main(**connection_kwargs):
     except PermissionError:
         pass
         
-    await registry.start()
+    task = loop.create_task(registry.start())
+    await registry.session._started_future
+    await debugger_main()
+    await task
 
 
 if __name__ == '__main__':

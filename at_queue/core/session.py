@@ -85,6 +85,7 @@ class BasicSession:
     _recieve_channel: aio_pika.abc.AbstractChannel
     _recieve_queue: aio_pika.abc.AbstractQueue
     _listen_future: asyncio.Future
+    _started_future: asyncio.Future
 
     uuid: UUID
     _process_message: Union[Callable, Awaitable] = None
@@ -97,6 +98,7 @@ class BasicSession:
         self.uuid = uuid
         self.auto_ack = auto_ack
         self.connection_parameters = connection_parameters
+        self._started_future = asyncio.get_event_loop().create_future()
 
     async def initialize(self) -> bool:
         self._send_connection = await self.connection_parameters.connect_robust()
@@ -170,12 +172,14 @@ class BasicSession:
         return message
     
     async def listen(self):
-        self._listen_future = asyncio.Future()
+        self._listen_future = asyncio.get_event_loop().create_future()
+        self._started_future = asyncio.get_event_loop().create_future()
         self._check_initialized()
         logger.info(f"Started listening queue recieve-{self.id}")
         consumer = await self.recieve_queue.consume(self._main_callback)
         logger.info(f"Listening consumer: {consumer}")
         logger.info("To exit press CTRL+C")
+        self._started_future.set_result(True)
         try:
             await self._listen_future
         except KeyboardInterrupt:
@@ -319,7 +323,7 @@ class QueueSession(CommunicationSession):
         msg = await super().send(reciever, message, answer_to, message_id=message_id, sender=sender, **headers)
         if await_answer:
             msg['callback'] = callback
-            msg['future'] = asyncio.Future()
+            msg['future'] = asyncio.get_event_loop().create_future()
             msg['_headers'] = headers
             self.awaiting_messages[str(msg['message_id'])] = msg
         return msg
@@ -400,12 +404,13 @@ class ReversedSession(BasicSession):
                 await res
 
     async def send_queue_listen(self):
-        self._listen_future = asyncio.Future()
+        self._listen_future = asyncio.get_event_loop().create_future()
         self._check_initialized()
         logger.info(f"Started reversed session listening queue send-{self.id}")
         consumer = await self.send_queue.consume(self._send_callback)
         logger.info(f"Listening consumer: {consumer}")
         logger.info("To exit press CTRL+C")
+        self._started_future.set_result(True)
         try:
             await self._listen_future
         except KeyboardInterrupt:

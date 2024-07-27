@@ -66,6 +66,17 @@ class ATBrokerInstance:
                     },
                     'component': broker.component.__dict__
                 }, answer_to=message_id)
+            elif message.get('type') == 'inspect_all':
+                result = {
+                    name: {
+                        'broker': {
+                            'session_id': str(broker.session.uuid)
+                        },
+                        'component': broker.component.__dict__
+                    }
+                    for name, broker in self.registry._registry.items()
+                }
+                return await self.session.send(sender, result, answer_to=message_id)
         else:
             reciever_broker = self.registry.get_broker(reciever)
             if reciever_broker:

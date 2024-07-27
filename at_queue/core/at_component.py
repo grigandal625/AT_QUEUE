@@ -318,7 +318,7 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
             self.session.send(reciever=sender, message={'errors': [e.__dict__]}, answer_to=message_id, await_answer=False)
             raise e
         
-        method: ATComponentMethod = self.methods.get(method_name)
+        method: ATComponentMethod = self.methods.get(method_name, None)
 
         if method is None:
             msg = f'Component "{self.name}" received execute method message with id "{message_id}" from "{sender}" but got unknown method name "{method_name}". Avalible method names are: {[m for m in self.methods]}'

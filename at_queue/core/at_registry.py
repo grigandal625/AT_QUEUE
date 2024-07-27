@@ -29,7 +29,7 @@ class ATRegistry:
         self.initialized = True
 
     async def _on_register(self, *args, message: dict, sender: str, reciever: str, message_id: str, **kwargs):
-        if message.get('type') not in ['register', 'inspect']:
+        if message.get('type') not in ['register', 'inspect', 'inspect_all']:
             logger.warning(f'Recieved register message {message} with id {message_id} from {sender}')
         if reciever != 'registry':
             logger.warning(f'Recieved register message {message} with id {message_id} from {sender} that is not sent to "registry" but to "{reciever}"')
@@ -50,6 +50,17 @@ class ATRegistry:
                 'component': broker.component.__dict__
             }, answer_to=message_id)
         
+        if message.get('type') == 'inspect_all':
+            return await self.session.send(sender, {
+                name: {
+                    'broker': {
+                        'session_id': str(broker.session.uuid)
+                    },
+                    'component': broker.component.__dict__
+                }
+                for name, broker in self._registry.items()
+            }, answer_to=message_id)
+
         component_data = message.get('component')
         component = self._build_component(component_data)
         session_id = message.get('session_id') or uuid3(NAMESPACE_OID, component.name)
@@ -110,15 +121,10 @@ class ATRegistryInspector(ATComponent):
     inspector_id: UUID
 
     def __init__(self, connection_parameters: ConnectionParameters, *args, **kwargs):
-        kwargs['name'] = 'inspector'
+        inspector_id = uuid4()
+        kwargs['name'] = 'inspector-'+str(inspector_id)
         super().__init__(connection_parameters, *args, **kwargs)
-        self.inspector_id = uuid4()
-
-    @property
-    def __dict__(self):
-        res = super().__dict__
-        res['name'] = 'inspector-'+str(self.inspector_id)
-        return res
+        self.inspector_id = inspector_id
 
     async def inspect(self, component):
         return await self.session.send_await(
@@ -126,5 +132,13 @@ class ATRegistryInspector(ATComponent):
             {
                 'type': 'inspect',
                 'component': component
+            }
+        )
+    
+    async def inspect_all(self):
+        return await self.session.send_await(
+            'registry',
+            {
+                'type': 'inspect_all',
             }
         )
