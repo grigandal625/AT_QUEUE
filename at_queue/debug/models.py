@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Dict
+from typing import Dict, Any
 
 class ExecMetod(BaseModel):
     component: str
@@ -8,4 +8,4 @@ class ExecMetod(BaseModel):
     auth_token: str = None
 
 class ExecMethodResult(BaseModel):
-    result: Dict
+    result: Any
