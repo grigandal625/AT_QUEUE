@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from at_queue.core.at_registry import ATRegistryInspector, ConnectionParameters
 from at_queue.utils.arguments import get_args
 from at_queue.debug.models import ExecMetod, ExecMethodResult
@@ -26,6 +27,16 @@ async def get_inspector():
     return inspector
 
 app = FastAPI()
+
+origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get('/api/components')
 async def get_components() -> Dict:
