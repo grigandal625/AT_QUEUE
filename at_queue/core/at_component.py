@@ -322,7 +322,7 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
 
         if method is None:
             msg = f'Component "{self.name}" received execute method message with id "{message_id}" from "{sender}" but got unknown method name "{method_name}". Avalible method names are: {[m for m in self.methods]}'
-            e = exceptions.ExecMethodException(msg, self.session, self, message)
+            e = exceptions.ExecMethodException(msg, self.session, self, message_id, message)
             logger.error(e.__dict__)
             await self.session.send(reciever=sender, message={'errors': [e.__dict__]}, answer_to=message_id, await_answer=False)
             asyncio.sleep(0)
