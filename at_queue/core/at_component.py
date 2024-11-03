@@ -388,7 +388,7 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
         if errors is not None:
             msg = f'''Got errors while executing external method {reciever}.{methode_name}:
 
-{json.dumps(errors, indent=4)}'''
+{json.dumps(errors, indent=4, ensure_ascii=False)}'''
             logger.error(msg)
             raise exceptions.ExternalMethodException(msg, self.session, self, exec_result.get('message_id'), exec_result)
         if exec_result.get('type') != 'method_result':
