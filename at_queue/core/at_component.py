@@ -191,6 +191,7 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
     register_future: asyncio.Future
     initialized: bool = False
     register_listen_task: asyncio.Task
+    _passed_config: ATComponentConfig = None
 
     started: bool = False
 
@@ -303,6 +304,7 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
         
         auth_token = msg.headers.get('auth_token', None)
         config = load_component_config(config_data)
+        self._passed_config = config
         result = await self.perform_configurate(config, auth_token=auth_token)
         await self.session.send(reciever=sender, message={'result': result}, answer_to=message_id, await_answer=False)
 
