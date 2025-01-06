@@ -191,11 +191,12 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
     register_future: asyncio.Future
     initialized: bool = False
     register_listen_task: asyncio.Task
-    _passed_config: ATComponentConfig = None
+    _passed_configs: Dict[str, ATComponentConfig]
 
     started: bool = False
 
     def __init__(self, connection_parameters: ConnectionParameters, *args, **kwargs):
+        self._passed_configs = {}
         kwargs['name'] = kwargs.get('name', self.__class__.__name__)
         kwargs['methods'] = self._methods
         super().__init__(*args, **kwargs)
@@ -304,7 +305,8 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
         
         auth_token = msg.headers.get('auth_token', None)
         config = load_component_config(config_data)
-        self._passed_config = config
+        if auth_token:
+            self._passed_configs[auth_token] = config
         result = await self.perform_configurate(config, auth_token=auth_token)
         await self.session.send(reciever=sender, message={'result': result}, answer_to=message_id, await_answer=False)
 
