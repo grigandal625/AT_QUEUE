@@ -363,6 +363,11 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
                 raise e                
             exec_kwargs[input_name] = arg
 
+        if method.args_schema.get('additionalProperties'):
+            for arg, value in method_args.items():
+                if arg not in exec_kwargs:
+                    exec_kwargs[arg] = value
+
         try:
             result = method.execute(processed_message=message, processed_message_id=message_id, exec_arguments=exec_kwargs)
             if inspect.iscoroutine(result):

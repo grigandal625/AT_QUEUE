@@ -93,7 +93,7 @@ pyyaml = "^6.0.1"
 type = "git"
 url = "https://github.com/grigandal625/AT_CONFIG.git"
 reference = "master"
-resolved_reference = "59937a1f3e81ad69c48fce77afbaa6faacaf7bcd"
+resolved_reference = "0f62132f9bfa62083c53abfa9d0f6cccdf3cae33"
 
 [[package]]
 name = "attrs"

@@ -40,10 +40,13 @@ def function_to_json_schema(func: Callable, as_method=False):
     schema = {
         "type": "object",
         "properties": OrderedDict(),
-        "required": []
+        "required": [],
+        "additionalProperties": False
     }
     
     for param_name, param in (list(signature.parameters.items())[1:] if as_method else signature.parameters.items()):
+        if str(param).startswith('*'):
+            schema["additionalProperties"] = True
         param_schema = {"type": "string"}  # Default type is string
         if param.annotation != inspect.Parameter.empty:
             param_type = get_json_schema_type(param.annotation)
