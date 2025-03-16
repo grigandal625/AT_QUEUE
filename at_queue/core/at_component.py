@@ -146,7 +146,7 @@ class AuthorizedATComponentMethod(ATComponentMethod):
         if 'auth_token' not in kwargs:
             raise exceptions.NotAuthorizedMethodException(
                 f'Missing auth_token argument to execute method {self.owner.name}.{self.name}', 
-                session=self.owner.session, 
+                session=self.owner.session if self.owner.initialized else None, 
                 component=self.owner, 
                 processed_message=self.metadata.get('processed_message', None),
                 processed_message_id=self.metadata.get('processed_message_id', None)
