@@ -15,6 +15,7 @@ import traceback
 import json
 from at_config.core.at_config_handler import ATComponentConfig
 from at_config.core.at_config_loader import load_component_config
+from at_config.core.context import Context
 
 
 logger = logging.getLogger(__name__)
@@ -304,7 +305,10 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
             raise e
         
         auth_token = msg.headers.get('auth_token', None)
-        config = load_component_config(config_data)
+        config = await load_component_config(config_data, context=Context(
+            component=self,
+            auth_token=auth_token
+        ))
         if auth_token:
             self._passed_configs[auth_token] = config
         result = await self.perform_configurate(config, auth_token=auth_token)
