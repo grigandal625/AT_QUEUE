@@ -321,16 +321,20 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
     async def perform_configurate(self, config: ATComponentConfig, auth_token: str = None, *args, **kwargs) -> bool:
         return True
     
-    async def get_user_id_or_token(self, auth_token: str | None) -> int | str | None:
+    async def get_user_id_or_token(self, auth_token: str | None, raize_on_failed = True) -> int | str | None:
         if auth_token is None:
             return None
-        if await self.check_external_registered("AuthWorker"):
-            user_id = await self.exec_external_method(
-                reciever="AuthWorker",
-                methode_name="verify_token",
-                method_args={"token": auth_token},
-            )
-            return user_id
+        try:
+            if await self.check_external_registered("AuthWorker"):
+                user_id = await self.exec_external_method(
+                    reciever="AuthWorker",
+                    methode_name="verify_token",
+                    method_args={"token": auth_token},
+                )
+                return user_id
+        except Exception as e:
+            if raize_on_failed:
+                raise e
         return auth_token
             
     async def _exec_method(self, *args, message: dict, sender: str, message_id: Union[str, UUID], msg: aio_pika.IncomingMessage, **kwargs):
