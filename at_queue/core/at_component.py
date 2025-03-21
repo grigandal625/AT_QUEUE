@@ -322,6 +322,8 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
         return True
     
     async def get_user_id_or_token(self, auth_token: str | None, raize_on_failed = True) -> int | str | None:
+        if not self.initialized or not self.registered:
+            return auth_token
         if auth_token is None:
             return None
         try:
