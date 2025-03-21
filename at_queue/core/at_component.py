@@ -295,6 +295,7 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
         return True
 
     async def _configurate(self, *args, message: dict, sender: str, message_id: Union[str, UUID], msg: aio_pika.IncomingMessage, **kwargs):
+        
         config_data = message.get('config')
         if config_data is None:
             msg = f'Component "{self.name}" received configurate message with id "{message_id}" from "{sender}" but configuration is not specified'
@@ -305,17 +306,32 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
             raise e
         
         auth_token = msg.headers.get('auth_token', None)
+        cache_key = auth_token
+        if auth_token is not None:
+            cache_key = await self.get_user_id_or_token(auth_token)
         config = await load_component_config(config_data, context=Context(
             component=self,
             auth_token=auth_token
         ))
-        if auth_token:
-            self._passed_configs[auth_token] = config
+        if cache_key:
+            self._passed_configs[cache_key] = config
         result = await self.perform_configurate(config, auth_token=auth_token)
         await self.session.send(reciever=sender, message={'result': result}, answer_to=message_id, await_answer=False)
 
     async def perform_configurate(self, config: ATComponentConfig, auth_token: str = None, *args, **kwargs) -> bool:
         return True
+    
+    async def get_user_id_or_token(self, auth_token: str | None) -> int | str | None:
+        if auth_token is None:
+            return None
+        if await self.check_external_registered("AuthWorker"):
+            user_id = await self.exec_external_method(
+                reciever="AuthWorker",
+                methode_name="verify_token",
+                method_args={"token": auth_token},
+            )
+            return user_id
+        return auth_token
             
     async def _exec_method(self, *args, message: dict, sender: str, message_id: Union[str, UUID], msg: aio_pika.IncomingMessage, **kwargs):
         method_name = message.get('method')
