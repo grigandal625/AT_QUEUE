@@ -315,8 +315,12 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
         ))
         if cache_key:
             self._passed_configs[cache_key] = config
-        result = await self.perform_configurate(config, auth_token=auth_token)
-        await self.session.send(reciever=sender, message={'result': result}, answer_to=message_id, await_answer=False)
+        try:
+            result = await self.perform_configurate(config, auth_token=auth_token)
+            await self.session.send(reciever=sender, message={'result': result}, answer_to=message_id, await_answer=False)
+        except Exception as e:
+            logger.error(traceback.format_exc())
+            await self.session.send(reciever=sender, message={'errors': [str(e)]}, answer_to=message_id, await_answer=False)
 
     async def perform_configurate(self, config: ATComponentConfig, auth_token: str = None, *args, **kwargs) -> bool:
         return True
