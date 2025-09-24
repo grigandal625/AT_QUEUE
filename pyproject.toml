@@ -11,10 +11,15 @@ aio-pika = "*"
 python = "^3.10"
 at-config = {git = "https://github.com/grigandal625/AT_CONFIG.git", rev = "master"}
 fastapi = "^0.111.1"
+pydantic = "^2.11.9"
 
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.0"
+
+
+[tool.poetry.group.development.dependencies]
+pre-commit = "^4.3.0"
 
 [build-system]
 requires = ["poetry-core"]
