@@ -12,6 +12,7 @@ python = "^3.10"
 at-config = {git = "https://github.com/grigandal625/AT_CONFIG.git", rev = "master"}
 fastapi = "^0.111.1"
 pydantic = "^2.11.9"
+jsonref = "^1.1.0"
 
 
 [tool.poetry.group.dev.dependencies]

@@ -4,6 +4,7 @@ from typing import Callable
 from typing import Dict
 from typing import Optional
 
+import jsonref
 from pydantic import ConfigDict
 from pydantic import create_model
 from pydantic.json_schema import model_json_schema
@@ -62,6 +63,7 @@ def function_to_json_schema(func: Callable, as_method=False):
 
     # Extract the main schema part (remove definitions/title if needed)
     # Pydantic returns full compliant JSON Schema
+    schema = jsonref.replace_refs(schema)
     return schema
 
 
