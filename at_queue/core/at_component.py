@@ -21,6 +21,8 @@ from at_config.core.context import Context
 from jsonschema import SchemaError
 from jsonschema import validate
 from jsonschema import ValidationError
+from pydantic import BaseModel
+from pydantic import ValidationError as PDValidationError
 
 from at_queue.core import exceptions
 from at_queue.core.session import ConnectionParameters
@@ -466,8 +468,9 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
                 if f not in exec_kwargs:
                     exec_kwargs[f] = method_args[f]
 
-        except ValidationError as e:
-            msg = str(e)
+        except (ValidationError, PDValidationError) as e:
+            msg = str(e) if isinstance(
+                e, ValidationError) else e.json(indent=4)
             e = exceptions.MethodArgumentSchemaException(
                 msg, self.session, self, message_id, message_id, method, None)
             await self.session.send(
@@ -482,6 +485,10 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
             )
             if inspect.iscoroutine(result):
                 result = await result
+
+            if isinstance(result, BaseModel):
+                result = result.model_dump()
+
             await self.session.send(
                 reciever=sender,
                 message={"type": "method_result", "result": result},
