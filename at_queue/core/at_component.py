@@ -459,6 +459,9 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
                 method, AuthorizedATComponentMethod) else None
             args_model = create_args_model(method.orig, auth_token)
 
+            if auth_token and 'auth_token' not in method_args:
+                method_args['auth_token'] = auth_token
+
             validated_data = args_model(**method_args)
             exec_kwargs = {}
             for field_name in validated_data.model_dump():
