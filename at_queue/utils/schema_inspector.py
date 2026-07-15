@@ -88,6 +88,11 @@ def return_type_to_json_schema(func: Callable) -> Optional[Dict[str, Any]]:
 
     # Generate JSON Schema and extract the result field schema
     schema = model_json_schema(model)
+
+    # Extract the main schema part (remove definitions/title if needed)
+    # Pydantic returns full compliant JSON Schema
+    schema = jsonref.replace_refs(schema)
+
     return schema["properties"]["result"]
 
 
