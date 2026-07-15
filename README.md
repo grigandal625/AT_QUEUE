@@ -1,31 +1,31 @@
 # Брокер сообщений для взаимодействия компонентов комплекса АТ-ТЕХНОЛОГИЯ
 
-Данный проект предоставляет python-пакет для обеспечения взаимодействия различных компонентов комплекса АТ-ТЕХНОЛОГИЯ посредством сообщений через очереди [RabbitMQ](https://www.rabbitmq.com/)
+Данный проект предоставляет python-пакет для обеспечения взаимодействия различных компонентов комплекса АТ-ТЕХНОЛОГИЯ посредством сообщений через очереди[RabbitMQ](https: // www.rabbitmq.com/)
 
-## Установка
+# Установка
 
 1. Установить python версии от 3.10
 2. Установть пакет следующей командой:
 
 ```bash
-pip install git+https://github.com/grigandal625/AT_QUEUE.git@master
+pip install git+https: // github.com/grigandal625/AT_QUEUE.git@master
 ```
 
 Для более ранних версий pip команда будет иметь вид
 
 ```bash
-pip install git+https://github.com/grigandal625/AT_QUEUE.git#egg=at-queue
+pip install git+https: // github.com/grigandal625/AT_QUEUE.git  # egg=at-queue
 ```
 
 Для систем типа `linux` может потребоваться напрямую указать версию python:
 
 ```bash
-python3.10 -m pip install git+https://github.com/grigandal625/AT_QUEUE.git@master"
+python3.10 - m pip install git+https: // github.com/grigandal625/AT_QUEUE.git@master"
 ```
 
 Также можно использовать пакетный менеджер pipenv, poetry
 
-Далее для работы пакета необходимо установить и запустить брокер [RabbitMQ](https://www.rabbitmq.com/). Его можно установить и запустить в основной операционной системе, а также можно запустить с использованием `docker` с помощью команды 
+Далее для работы пакета необходимо установить и запустить брокер [RabbitMQ](https://www.rabbitmq.com/). Его можно установить и запустить в основной операционной системе, а также можно запустить с использованием `docker` с помощью команды
 
 ```bash
 docker run --rm -p 15672:15672 -p 5672:5672 rabbitmq:management
@@ -59,7 +59,7 @@ docker run --rm -p 15672:15672 -p 5672:5672 rabbitmq:management
 ## Примеры
 
 Здесь будет показан простейший пример использования брокера и компонентов
- 
+
 Пусть требуется создать два компонента.
 
 - У первого компонента необходимо реализовать метод, принимающий два целых числа и возвращающего их сумму
@@ -99,7 +99,7 @@ class IntSummator(ATComponent):
 
     # Если указать подсказки типов для аргументов a: int и b: int, то входные данные будут провалидированы компонентом на соответствие типам
     @component_method
-    def int_sum(self, a: int, b: int) -> int: 
+    def int_sum(self, a: int, b: int) -> int:
         return a + b
 
 
@@ -132,8 +132,8 @@ class SummRequester(ATComponent):
         try:
             # вызов IntSummator.int_sum(a=5, b=18)
             result = await self.exec_external_method(
-                reciever='IntSummator', 
-                methode_name='int_sum', 
+                reciever='IntSummator',
+                methode_name='int_sum',
                 method_args={'a': 5, 'b': 18}
             )
             return result
@@ -146,8 +146,8 @@ class SummRequester(ATComponent):
         try:
             # вызов IntSummator.int_sum(a=5, b='b') - b с типом, отличащимся от int
             result = await self.exec_external_method(
-                reciever='IntSummator', 
-                methode_name='int_sum', 
+                reciever='IntSummator',
+                methode_name='int_sum',
                 method_args={'a': 5, 'b': 'b'}
             )
             return result

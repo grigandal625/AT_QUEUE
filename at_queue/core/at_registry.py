@@ -1,11 +1,20 @@
-from at_queue.core.at_broker import ATBrokerInstance
-from at_queue.core.at_component import ATComponent
-from at_queue.core.session import ConnectionParameters, CommunicationReversedSession
-from at_queue.core.at_component import BaseComponent, BaseComponentMethod, Input, Output
-from typing import Dict, Union
-from uuid import UUID, uuid3, uuid4, NAMESPACE_OID
 import asyncio
 import logging
+from typing import Dict
+from typing import Union
+from uuid import NAMESPACE_OID
+from uuid import UUID
+from uuid import uuid3
+from uuid import uuid4
+
+from at_queue.core.at_broker import ATBrokerInstance
+from at_queue.core.at_component import ATComponent
+from at_queue.core.at_component import BaseComponent
+from at_queue.core.at_component import BaseComponentMethod
+from at_queue.core.at_component import Input
+from at_queue.core.at_component import Output
+from at_queue.core.session import CommunicationReversedSession
+from at_queue.core.session import ConnectionParameters
 
 
 logger = logging.getLogger(__name__)
@@ -18,95 +27,103 @@ class ATRegistry:
     _brokers_listen_tasks: Dict[str, asyncio.Task]
 
     def __init__(self, connection_parameters: ConnectionParameters, session_id: Union[str, UUID] = None) -> None:
-        session_id = session_id or uuid3(NAMESPACE_OID, 'at_registry')
+        session_id = session_id or uuid3(NAMESPACE_OID, "at_registry")
         self._registry = {}
         self._brokers_listen_tasks = {}
-        self.session = CommunicationReversedSession('registry', connection_parameters, session_id)
+        self.session = CommunicationReversedSession(
+            "registry", connection_parameters, session_id)
 
     async def initialize(self):
         await self.session.initialize()
-        self.session.process_message(self._on_register)
+        self.session.process_message(self._on_message)
         self.initialized = True
 
-    async def _on_register(self, *args, message: dict, sender: str, reciever: str, message_id: str, **kwargs):
-        if message.get('type') not in ['register', 'inspect', 'inspect_all']:
-            logger.warning(f'Recieved register message {message} with id {message_id} from {sender}')
-        if reciever != 'registry':
-            logger.warning(f'Recieved register message {message} with id {message_id} from {sender} that is not sent to "registry" but to "{reciever}"')
-        
-        if message.get('type') == 'inspect':
+    async def _on_message(self, *args, message: dict, sender: str, reciever: str, message_id: str, **kwargs):
+        if message.get("type") not in ["register", "inspect", "inspect_all"]:
+            logger.warning(
+                f"Recieved register message {message} with id {message_id} from {sender}")
+        if reciever != "registry":
+            logger.warning(
+                f'Recieved register message {message} with id {message_id} from {sender} that is not sent to "registry"'
+                f' but to "{reciever}"'
+            )
+
+        if message.get("type") == "inspect":
             # if sender != 'inspector':
             #     logger.warning(f'Recieved register message {message} with id {message_id} from {sender}')
-            component_name = message.get('component')
+            component_name = message.get("component")
             if component_name is None:
-                return await self.session.send(sender, {'errors': ["Field \"component\" (str) is required"]}, answer_to=message_id)
+                return await self.session.send(
+                    sender, {"errors": ['Field "component" (str) is required']}, answer_to=message_id
+                )
             broker = self._registry.get(component_name)
             if broker is None:
-                return await self.session.send(sender, {'errors': [f'Component "{component_name}" is not registered']}, answer_to=message_id)
-            return await self.session.send(sender, {
-                'broker': {
-                    'session_id': str(broker.session.uuid)
-                },
-                'component': broker.component.__dict__
-            }, answer_to=message_id)
-        
-        if message.get('type') == 'inspect_all':
-            return await self.session.send(sender, {
-                name: {
-                    'broker': {
-                        'session_id': str(broker.session.uuid)
-                    },
-                    'component': broker.component.__dict__
-                }
-                for name, broker in self._registry.items()
-            }, answer_to=message_id)
+                return await self.session.send(
+                    sender, {"errors": [f'Component "{component_name}" is not registered']}, answer_to=message_id
+                )
+            return await self.session.send(
+                sender,
+                {"broker": {"session_id": str(
+                    broker.session.uuid)}, "component": broker.component.__dict__},
+                answer_to=message_id,
+            )
 
-        component_data = message.get('component')
+        if message.get("type") == "inspect_all":
+            return await self.session.send(
+                sender,
+                {
+                    name: {"broker": {"session_id": str(
+                        broker.session.uuid)}, "component": broker.component.__dict__}
+                    for name, broker in self._registry.items()
+                },
+                answer_to=message_id,
+            )
+
+        component_data = message.get("component")
         component = self._build_component(component_data)
-        session_id = message.get('session_id') or uuid3(NAMESPACE_OID, component.name)
-        broker = ATBrokerInstance(self, component, self.session.connection_parameters, session_id)
+        session_id = message.get("session_id") or uuid3(
+            NAMESPACE_OID, component.name)
+        broker = ATBrokerInstance(
+            self, component, self.session.connection_parameters, session_id)
         await broker.initialize()
         answer = {
-            'session_id': str(session_id),
+            "session_id": str(session_id),
         }
         self._registry[component.name] = broker
-        self._brokers_listen_tasks[component.name] = asyncio.get_event_loop().create_task(broker.start())
+        self._brokers_listen_tasks[component.name] = asyncio.get_event_loop(
+        ).create_task(broker.start())
         await self.session.send(component.name, answer, answer_to=message_id)
 
     def _build_component(self, component_data: dict) -> BaseComponent:
-        name = component_data.get('name')
-        description = component_data.get('description')
-        methods_data = component_data.get('methods')
-        methods = {
-            method_name: self._build_method(method_data)
-            for method_name, method_data in methods_data.items()
-        }
+        name = component_data.get("name")
+        description = component_data.get("description")
+        methods_data = component_data.get("methods")
+        methods = {method_name: self._build_method(
+            method_data) for method_name, method_data in methods_data.items()}
         return BaseComponent(name=name, description=description, methods=methods)
-    
+
     def _build_method(self, method_data: dict):
-        name = method_data.get('name')
-        description = method_data.get('description')
-        inputs_data = method_data.get('inputs')
-        output_data = method_data.get('output')
-        inputs = {
-            input_name: self._build_input(input_data)
-            for input_name, input_data in inputs_data.items()
-        }
+        name = method_data.get("name")
+        description = method_data.get("description")
+        inputs_data = method_data.get("inputs")
+        output_data = method_data.get("output")
+        inputs = {input_name: self._build_input(
+            input_data) for input_name, input_data in inputs_data.items()}
         output = self._build_output(output_data)
         return BaseComponentMethod(name=name, description=description, inputs=inputs, output=output)
 
     def _build_input(self, input_data: dict):
         return Input(**input_data)
-    
+
     def _build_output(self, output_data: dict):
         return Output(**output_data)
 
     def get_broker(self, name: str):
         return self._registry.get(name)
-    
+
     async def start(self):
         return await self.session.listen()
-    
+
     async def stop(self):
         for name in self._registry:
             broker = self._registry[name]
@@ -122,23 +139,17 @@ class ATRegistryInspector(ATComponent):
 
     def __init__(self, connection_parameters: ConnectionParameters, *args, **kwargs):
         inspector_id = uuid4()
-        kwargs['name'] = 'inspector-'+str(inspector_id)
+        kwargs["name"] = "inspector-" + str(inspector_id)
         super().__init__(connection_parameters, *args, **kwargs)
         self.inspector_id = inspector_id
 
     async def inspect(self, component):
-        return await self.session.send_await(
-            'registry',
-            {
-                'type': 'inspect',
-                'component': component
-            }
-        )
-    
+        return await self.session.send_await("registry", {"type": "inspect", "component": component})
+
     async def inspect_all(self):
         return await self.session.send_await(
-            'registry',
+            "registry",
             {
-                'type': 'inspect_all',
-            }
+                "type": "inspect_all",
+            },
         )
