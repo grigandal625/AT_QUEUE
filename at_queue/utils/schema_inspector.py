@@ -1,3 +1,4 @@
+import copy
 import inspect
 from typing import Any
 from typing import Callable
@@ -63,7 +64,7 @@ def function_to_json_schema(func: Callable, as_method=False):
 
     # Extract the main schema part (remove definitions/title if needed)
     # Pydantic returns full compliant JSON Schema
-    schema = dict(jsonref.replace_refs(schema))
+    schema = copy.deepcopy(jsonref.replace_refs(schema))
     return schema
 
 
@@ -91,7 +92,7 @@ def return_type_to_json_schema(func: Callable) -> Optional[Dict[str, Any]]:
 
     # Extract the main schema part (remove definitions/title if needed)
     # Pydantic returns full compliant JSON Schema
-    schema = dict(jsonref.replace_refs(schema))
+    schema = copy.deepcopy(jsonref.replace_refs(schema))
 
     return schema["properties"]["result"]
 
