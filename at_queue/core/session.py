@@ -170,11 +170,11 @@ class BasicSession:
         """
         self._send_connection = await self.connection_parameters.connect_robust()
         self._send_channel = await self._send_connection.channel()
-        self._send_queue = await self._send_channel.declare_queue(f"send-{self.id}")
+        self._send_queue = await self._send_channel.declare_queue(f"send-{self.id}", durable=True)
 
         self._recieve_connection = await self.connection_parameters.connect_robust()
         self._recieve_channel = await self._recieve_connection.channel()
-        self._recieve_queue = await self._recieve_channel.declare_queue(f"recieve-{self.id}")
+        self._recieve_queue = await self._recieve_channel.declare_queue(f"recieve-{self.id}", durable=True)
 
         self.initialized = True
         return self.initialized
