@@ -59,6 +59,7 @@ class ConnectionParameters:
         timeout: aio_pika.abc.TimeoutType = None,
         client_properties: Optional[FieldTable] = None,
         connection_class: Type[aio_pika.abc.AbstractRobustConnection] = aio_pika.RobustConnection,
+        heartbeat: Optional[int] = 300,
         **kwargs: Any,
     ):
         """
@@ -82,6 +83,7 @@ class ConnectionParameters:
             Defaults to None.
         connection_class (Type[aio_pika.abc.AbstractRobustConnection], optional): The connection class to use.
             Defaults to aio_pika.RobustConnection.
+        heartbeat (Optional[int], optional): The heartbeat interval for the connection. Defaults to 300.
         **kwargs (Any, optional): Additional keyword arguments.
 
         Returns:
@@ -101,6 +103,7 @@ class ConnectionParameters:
             "timeout": timeout,
             "client_properties": client_properties,
             "connection_class": connection_class,
+            "heartbeat": heartbeat,
             **kwargs,
         }
 
