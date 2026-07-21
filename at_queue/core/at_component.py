@@ -476,7 +476,7 @@ class ATComponent(BaseComponent, metaclass=ATComponentMetaClass):
                 e, ValidationError) else e.json(indent=4)
             e = exceptions.MethodArgumentSchemaException(
                 # переделать на поиск аргумента
-                msg, self.session, self, message_id, message_id, method, (method.inputs.values())[0])
+                msg, self.session, self, message_id, message_id, method, list(method.inputs.values())[0])
             await self.session.send(
                 reciever=sender, message={"errors": [e.__dict__]}, answer_to=message_id, await_answer=False
             )
